@@ -5,12 +5,12 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
-from local_app import vanish_cam as app
-from local_app.naruto_effect import (
+import vanish_cam as app
+from naruto_effect import (
     EFFECT_SECONDS, falling_log_anchor, joined_hands_from_landmarks,
     landed_log_anchor, load_log, overlay_log, render_substitution, substitution_anchor,
 )
-from local_app.test_video_output import arguments
+from test_video_output import arguments
 
 
 class JoinedHandsTests(unittest.TestCase):
@@ -130,6 +130,8 @@ class MenuTests(unittest.TestCase):
             self.assertEqual(app.choose_mode(), "naruto")
             key.return_value = ord("1")
             self.assertEqual(app.choose_mode(), "normal")
+            key.return_value = ord("3")
+            self.assertEqual(app.choose_mode(), "goku")
 
 
 class NarutoVideoLoopTests(unittest.TestCase):
@@ -170,6 +172,57 @@ class NarutoVideoLoopTests(unittest.TestCase):
         recognizer.recognize_joined_hands.assert_called_once()
         sound.play.assert_called_once()
         sound.close.assert_called_once()
+
+
+class GokuVideoLoopTests(unittest.TestCase):
+    def test_forehead_hold_teleports_out_and_back_with_sound(self):
+        frame = np.full((80, 120, 3), 90, np.uint8)
+        capture = Mock()
+        capture.read.side_effect = lambda: (True, frame.copy())
+        segmenter, recognizer = Mock(), Mock()
+        clock = [0.0]
+
+        def score(image, timestamp):
+            # Sai com a pose, afasta a mão e repete a pose para voltar.
+            return 0.0 if 6.0 <= clock[0] < 7.1 else 0.9
+
+        recognizer.recognize_goku.side_effect = score
+        sound = Mock()
+        virtual = Mock(width=120, height=80)
+        preview = []
+
+        def wait_key(_delay=1):
+            clock[0] += 0.1
+            return ord("q") if clock[0] >= 10.0 else 0
+
+        with ExitStack() as mocks:
+            mocks.enter_context(patch.object(app, "parse_args", return_value=arguments(mode="goku")))
+            mocks.enter_context(patch.object(app, "download_models"))
+            mocks.enter_context(patch.object(app, "open_camera", return_value=capture))
+            mocks.enter_context(patch.object(app, "create_tasks", return_value=(segmenter, recognizer)))
+            mocks.enter_context(patch.object(app, "TeleportSound", return_value=sound))
+            mocks.enter_context(patch.object(app, "open_virtual_camera", return_value=virtual))
+            mocks.enter_context(patch.object(app, "person_mask", return_value=np.ones((80, 120), np.float32)))
+            mocks.enter_context(patch.object(app.time, "perf_counter", side_effect=lambda: clock[0]))
+            mocks.enter_context(patch.object(app.cv2, "namedWindow"))
+            mocks.enter_context(patch.object(app.cv2, "resizeWindow"))
+            mocks.enter_context(patch.object(app.cv2, "destroyAllWindows"))
+            mocks.enter_context(patch.object(app.cv2, "imshow", side_effect=lambda name, image: preview.append(image.copy())))
+            mocks.enter_context(patch.object(app.cv2, "waitKey", side_effect=wait_key))
+            mocks.enter_context(patch.object(app.cv2, "putText", side_effect=AssertionError("Overlay vietato")))
+            mocks.enter_context(patch("builtins.print"))
+            self.assertEqual(app.run(), 0)
+
+        self.assertGreater(len(preview), 60)
+        self.assertEqual(len(virtual.send.call_args_list), len(preview))
+        for sent, shown in zip(virtual.send.call_args_list, preview):
+            np.testing.assert_array_equal(sent.args[0], shown)
+        self.assertGreater(recognizer.recognize_goku.call_count, 30)
+        self.assertEqual(sound.play.call_count, 2)  # Ida e volta.
+        sound.close.assert_called_once()
+        # As linhas de velocidade passam pelo corpo e depois somem.
+        self.assertTrue(any(int(image.max()) >= 200 for image in preview))
+        np.testing.assert_array_equal(preview[-1], frame)
 
 
 if __name__ == "__main__":

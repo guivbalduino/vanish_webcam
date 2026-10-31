@@ -12,3 +12,9 @@ For smoke, the app uses its own procedurally animated shapes in
 `naruto_effect.py`. A [CC0 smoke sprite sheet](https://opengameart.org/content/smoke-sprite-sheet)
 was reviewed but is not included because the procedural smoke scales and follows
 the detected person dynamically.
+
+## Teleport sound
+
+`teleport.MP3` is optional. When it is absent, `vanish_sound.py` synthesizes a
+short WAV (`vanish_teleport.wav` in the system temp folder) so Goku mode still
+plays a sound on both transitions. Drop a `teleport.MP3` here to use your own.
