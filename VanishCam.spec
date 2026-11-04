@@ -13,12 +13,13 @@ resources = [
     (root / "models" / "selfie_segmenter_landscape.tflite", "models"),
     (root / "assets" / "substitution_log.png", "assets"),
     (root / "assets" / "vanish.MP3", "assets"),
+    (root / "test_assets" / "sample_person.png", "test_assets"),
 ]
 missing = [str(path) for path, _ in resources if not path.is_file()]
 if not icon_file.is_file():
     missing.append(str(icon_file))
 if missing:
-    raise SystemExit("File necessari alla build mancanti:\n" + "\n".join(missing))
+    raise SystemExit("Arquivos necessarios para a compilacao ausentes:\n" + "\n".join(missing))
 
 a = Analysis(
     [str(root / "vanish_cam.py")],

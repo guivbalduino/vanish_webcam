@@ -1,0 +1,36 @@
+name: Compilação para Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PY_PYTHON: "3.12"
+    steps:
+      - name: Baixar o código-fonte
+        uses: actions/checkout@v4
+
+      - name: Configurar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compilar e executar o autodiagnóstico do app
+        run: cmd /c BUILD_WINDOWS.bat
+
+      - name: Publicar o executável como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: VanishCam-Windows
+          path: dist/VanishCam.exe
+          if-no-files-found: error
+          retention-days: 7

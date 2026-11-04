@@ -1,20 +1,15 @@
-# Substitution log sprite
+# Recursos visuais e áudio
 
-`substitution_log.png` was generated with the built-in ImageGen tool. The user
-image was used as a visual reference for object shape and mood, not as an edit
-target. The sprite is an original transparent-background illustration.
+## Tronco de substituição
 
-Final prompt:
+`substitution_log.png` foi criado com o ImageGen. A imagem enviada pelo usuário foi usada somente como referência de formato e atmosfera, não como alvo de edição. O sprite é uma ilustração original com fundo transparente.
 
-> Create a single ORIGINAL 2D hand-painted anime-style game sprite for live video compositing, using the user's attached image ONLY as a visual reference for the object and mood. Subject: one short thick wooden substitution log floating diagonally (bottom-left to top-right), soft desaturated pale sage-green bark with visible wood grain, dark ink cracks and small dark notches, round cut end with concentric wood rings visible at lower-left. Dramatic clean silhouette, strong cel shading and highlights, polished Japanese animation look. Center the entire log, leave a modest transparent margin around all edges. NO smoke, NO particles, NO background, NO scenery, NO shadow outside the object, NO people, NO text, NO symbols or logos. True transparent alpha background; isolated cutout. Asset should be immediately usable as a sprite over live webcam video.
+Descrição usada na geração:
 
-For smoke, the app uses its own procedurally animated shapes in
-`naruto_effect.py`. A [CC0 smoke sprite sheet](https://opengameart.org/content/smoke-sprite-sheet)
-was reviewed but is not included because the procedural smoke scales and follows
-the detected person dynamically.
+> Crie um sprite 2D ORIGINAL, pintado à mão e em estilo de anime, para composição em vídeo ao vivo. Mostre um único tronco curto e grosso de substituição, flutuando na diagonal, do canto inferior esquerdo ao superior direito. Use casca verde-sálvia clara e dessaturada, com veios de madeira, rachaduras escuras e pequenos nós. Mostre a seção circular cortada na extremidade inferior esquerda, com anéis de madeira concêntricos. Silhueta nítida, cel shading, realces e acabamento de animação japonesa. Centralize o tronco e deixe uma margem transparente discreta. Sem fumaça, partículas, fundo, cenário, sombra externa, pessoas, texto, símbolos ou logotipos. Fundo realmente transparente; recorte isolado, pronto para ser usado sobre o vídeo da webcam.
 
-## Teleport sound
+O app cria a fumaça em tempo real com formas procedurais em `naruto_effect.py`. Uma folha de sprites de fumaça com licença CC0 foi avaliada, mas não foi incluída porque a fumaça procedural acompanha a posição detectada da pessoa.
 
-`teleport.MP3` is optional. When it is absent, `vanish_sound.py` synthesizes a
-short WAV (`vanish_teleport.wav` in the system temp folder) so Goku mode still
-plays a sound on both transitions. Drop a `teleport.MP3` here to use your own.
+## Som do teletransporte
+
+`teleport.MP3` é opcional. Se o arquivo não estiver presente, `vanish_sound.py` gera um WAV curto (`vanish_teleport.wav`) na pasta temporária do sistema. Assim, o modo Goku continua reproduzindo som nas duas transições. Para usar outro som, coloque seu arquivo `teleport.MP3` nesta pasta.

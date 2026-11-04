@@ -23,7 +23,7 @@ STOP_MEME_PATH = BASE_DIR / "memes" / "stop.png"
 CALMA_MEME_PATH = BASE_DIR / "memes" / "calma.jpg"
 OK_MEME_PATH = BASE_DIR / "memes" / "memeok.jpg"
 
-WINDOW_NAME = "Meme Pose Tracker"
+WINDOW_NAME = "Rastreador de gestos e memes"
 CAMERA_WIDTH = 960
 CAMERA_HEIGHT = 540
 CAPTURE_WIDTH = 1280
@@ -39,7 +39,7 @@ FINGERTIP_INDICES = (8, 12, 16, 20)
 def load_meme(path):
     image = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if image is None:
-        raise FileNotFoundError(f"Impossibile leggere l'immagine: {path}")
+        raise FileNotFoundError(f"Não foi possível ler a imagem: {path}")
     return image
 
 
@@ -48,14 +48,14 @@ def open_camera(index=0):
     backends = (
         ("DirectShow", cv2.CAP_DSHOW),
         ("Media Foundation", cv2.CAP_MSMF),
-        ("automatico", cv2.CAP_ANY),
+        ("automático", cv2.CAP_ANY),
     )
     attempts = []
 
     for backend_name, backend in backends:
         cap = cv2.VideoCapture(index, backend)
         if not cap.isOpened():
-            attempts.append(f"{backend_name}: non disponibile")
+            attempts.append(f"{backend_name}: indisponível")
             cap.release()
             continue
 
@@ -67,18 +67,18 @@ def open_camera(index=0):
         for _ in range(30):
             ok, frame = cap.read()
             if ok and frame is not None and frame.size:
-                print(f"[WEBCAM] Backend attivo: {backend_name}")
+                print(f"[WEBCAM] Modo de captura ativo: {backend_name}")
                 return cap, frame
             time.sleep(0.05)
 
-        attempts.append(f"{backend_name}: aperta, ma nessun frame ricevuto")
+        attempts.append(f"{backend_name}: aberta, mas nenhum quadro foi recebido")
         cap.release()
 
     details = "; ".join(attempts)
     raise RuntimeError(
-        "Non riesco a ricevere immagini dalla webcam. "
-        "Chiudi eventuali programmi che la stanno usando e controlla i permessi "
-        f"di Windows. Tentativi: {details}"
+        "Não foi possível receber imagens da webcam. "
+        "Feche os aplicativos que estão usando a webcam e verifique as permissões "
+        f"do Windows. Tentativas: {details}"
     )
 
 
@@ -874,14 +874,14 @@ def main():
             fmt=pyvirtualcam.PixelFormat.BGR,
             backend="obs",
         )
-        print(f"[WEBCAM VIRTUALE] Attiva: {virtual_camera.device}")
+        print(f"[CÂMERA VIRTUAL] Ativa: {virtual_camera.device}")
     except Exception as exc:
         cap.release()
         face_landmarker.close()
         hand_landmarker.close()
         raise RuntimeError(
-            "Non riesco ad avviare OBS Virtual Camera. Chiudi OBS Studio o "
-            "disattiva la sua Virtual Camera, quindi riprova."
+            "Não foi possível iniciar a OBS Virtual Camera. Feche o OBS Studio ou "
+            "desative a câmera virtual do OBS e tente novamente."
         ) from exc
 
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
@@ -913,7 +913,7 @@ def main():
                     time.sleep(0.03)
                     continue
                 raise RuntimeError(
-                    "La webcam ha smesso di inviare fotogrammi per circa un secondo."
+                    "A webcam parou de enviar quadros por cerca de um segundo."
                 )
             camera_read_failures = 0
 
@@ -1042,27 +1042,27 @@ def main():
 
             phase = (time.monotonic() * 0.65) % 1.0
             for index, square in squares.items():
-                draw_analysis_square(frame, square, f"MANO {index + 1}", phase)
+                draw_analysis_square(frame, square, f"MAO {index + 1}", phase)
 
             status_color = (0, 255, 210) if active_pose else (0, 210, 255)
             if active_pose == "hearing":
-                status = "POSE ASCOLTO RILEVATA"
+                status = "POSE DE ESCUTA DETECTADA"
             elif active_pose == "calma":
-                status = "GESTO CALMA RILEVATO"
+                status = "GESTO DE CALMA DETECTADO"
             elif active_pose == "memeomg":
-                status = "MANI DIETRO LA TESTA RILEVATE"
+                status = "MAOS ATRAS DA CABECA DETECTADAS"
             elif active_pose == "sad":
-                status = "POSE PREGHIERA RILEVATA"
+                status = "POSE DE ORACAO DETECTADA"
             elif active_pose == "me":
-                status = "INDICAZIONE SU DI ME RILEVATA"
+                status = "APONTANDO PARA SI DETECTADO"
             elif active_pose == "stop":
-                status = "GESTO TIMEOUT RILEVATO"
+                status = "GESTO DE TEMPO ESGOTADO DETECTADO"
             elif active_pose == "ok":
-                status = "POLLICE ALZATO RILEVATO"
+                status = "POLEGAR PARA CIMA DETECTADO"
             elif active_pose == "two_hands":
-                status = "POSE DUE MANI RILEVATA"
+                status = "POSE COM DUAS MAOS DETECTADA"
             else:
-                status = "ANALISI MANI..."
+                status = "ANALISANDO AS MAOS..."
             cv2.putText(
                 frame,
                 status,
@@ -1075,7 +1075,7 @@ def main():
             )
             cv2.putText(
                 frame,
-                "Q/ESC: esci",
+                "Q/ESC: sair",
                 (18, CAMERA_HEIGHT - 16),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.48,
@@ -1086,7 +1086,7 @@ def main():
 
             cv2.putText(
                 frame,
-                f"confidenza: {confidence:.0%}",
+                f"confianca: {confidence:.0%}",
                 (CAMERA_WIDTH - 185, CAMERA_HEIGHT - 16),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.48,

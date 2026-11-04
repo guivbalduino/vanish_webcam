@@ -71,7 +71,7 @@ class _SoundPlayer:
     def __init__(self, path: Path):
         path = Path(path)
         if not path.is_file():
-            raise RuntimeError(f"Audio {self.label} non trovato: {path}")
+            raise RuntimeError(f"Áudio de {self.label} não encontrado: {path}")
         self.path = path
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -83,7 +83,7 @@ class _SoundPlayer:
             self.ffplay = shutil.which("ffplay")
             if self.ffplay is None:
                 raise RuntimeError(
-                    f"Per riprodurre {path.name} installa pygame o ffplay."
+                    f"Para reproduzir {path.name}, instale o pygame ou o ffplay."
                 )
             return
 
@@ -97,7 +97,7 @@ class _SoundPlayer:
         except Exception as error:
             if self.owns_mixer:
                 mixer.quit()
-            raise RuntimeError(f"Impossibile aprire l'audio {self.label}: {error}") from error
+            raise RuntimeError(f"Não foi possível abrir o áudio de {self.label}: {error}") from error
 
     def play(self) -> None:
         if self.ffplay is not None:
@@ -113,13 +113,13 @@ class _SoundPlayer:
                 )
             except OSError as error:
                 raise RuntimeError(
-                    f"Impossibile avviare l'audio {self.label}: {error}"
+                    f"Não foi possível iniciar o áudio de {self.label}: {error}"
                 ) from error
             return
         self.sound.stop()
         if self.sound.play() is None:
             raise RuntimeError(
-                f"Impossibile avviare l'audio {self.label}: nessun canale libero."
+                f"Não foi possível iniciar o áudio de {self.label}: nenhum canal de áudio disponível."
             )
 
     def close(self) -> None:
