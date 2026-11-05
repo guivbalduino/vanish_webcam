@@ -15,7 +15,7 @@ from pathlib import Path
 
 ASSET_DIR = Path(__file__).resolve().parent / "assets"
 SOUND_PATH = ASSET_DIR / "vanish.MP3"
-TELEPORT_SOUND_PATH = ASSET_DIR / "teleport.MP3"
+TELEPORT_SOUND_PATH = ASSET_DIR / "goku-teleport-sound.mp3"
 TELEPORT_FALLBACK_PATH = Path(tempfile.gettempdir()) / "vanish_teleport.wav"
 TELEPORT_SAMPLE_RATE = 44100
 
@@ -23,25 +23,28 @@ TELEPORT_SAMPLE_RATE = 44100
 def synthesize_teleport_wav(
     path: Path, duration: float = 1.1, sample_rate: int = TELEPORT_SAMPLE_RATE
 ) -> Path:
-    """Write a short rising/falling "zap" used when teleport.MP3 is absent."""
+    """Write a layered, short teleport burst when teleport.MP3 is absent."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     count = max(1, int(duration * sample_rate))
     rng = random.Random(5150)
     samples = bytearray()
     phase = 0.0
+    bass_phase = 0.0
     for index in range(count):
         progress = index / count
-        frequency = (
-            240.0
-            + 1500.0 * math.sin(math.pi * min(1.0, progress * 1.35))
-            + 700.0 * progress
-        )
+        # A fast upward ki-like sweep, followed by a descending resonant tail.
+        frequency = 180.0 + 1250.0 * math.sin(math.pi * min(1.0, progress * 1.45))
+        frequency += 520.0 * progress
         phase += 2.0 * math.pi * frequency / sample_rate
-        envelope = min(1.0, progress * 18.0) * (1.0 - progress) ** 1.7
-        tone = math.sin(phase) * 0.55 + math.sin(phase * 2.02) * 0.22
-        noise = (rng.random() * 2.0 - 1.0) * 0.3 * (1.0 - progress)
-        value = int(max(-1.0, min(1.0, (tone + noise) * envelope)) * 32767.0)
+        bass_phase += 2.0 * math.pi * (82.0 - 34.0 * progress) / sample_rate
+        attack = min(1.0, progress * 30.0)
+        tail = (1.0 - progress) ** 1.9
+        envelope = attack * tail
+        shimmer = math.sin(phase) * 0.50 + math.sin(phase * 2.01) * 0.20
+        impact = math.sin(bass_phase) * math.exp(-progress * 22.0) * 0.48
+        whoosh = (rng.random() * 2.0 - 1.0) * 0.16 * math.sin(math.pi * progress) * tail
+        value = int(max(-1.0, min(1.0, (shimmer * 0.72 + impact + whoosh) * envelope)) * 32767.0)
         samples += struct.pack("<h", value)
     with wave.open(str(path), "wb") as output:
         output.setnchannels(1)

@@ -949,92 +949,77 @@ def update_goku_hold(state: AppState, score: float, now: float) -> str | None:
 # Goku effect — rendering
 # ---------------------------------------------------------------------------
 
-def make_goku_lines(
-    height: int,
-    width: int,
-    count: int = 60,
-    seed: int = 42,
-) -> list[tuple[tuple[int, int], tuple[int, int]]]:
-    """Generate radial speed lines emanating from the image centre."""
-    rng = np.random.default_rng(seed)
-    cx, cy = width // 2, height // 2
-    lines = []
-    for _ in range(count):
-        angle = rng.uniform(0, 2 * np.pi)
-        r_inner = rng.uniform(0.08, 0.22) * min(height, width)
-        r_outer = rng.uniform(0.45, 0.85) * min(height, width)
-        x0 = int(cx + np.cos(angle) * r_inner)
-        y0 = int(cy + np.sin(angle) * r_inner)
-        x1 = int(cx + np.cos(angle) * r_outer)
-        y1 = int(cy + np.sin(angle) * r_outer)
-        lines.append(((x0, y0), (x1, y1)))
-    return lines
-
-
 def render_goku(
     frame: np.ndarray,
     background: np.ndarray,
     mask: np.ndarray,
     age: float,
     effect_type: str = "vanish",
-    lines: list | None = None,
 ) -> np.ndarray:
     """
     Render the Goku teleport effect.
     effect_type: 'vanish' fades out person, 'return' fades in.
     """
     height, width = frame.shape[:2]
-    if lines is None:
-        lines = make_goku_lines(height, width)
+    progress = float(np.clip(age / GOKU_EFFECT_SECONDS, 0.0, 1.0))
+    binary = (mask > 0.18).astype(np.uint8)
+    ys, xs = np.nonzero(binary)
+    if not len(xs):
+        return frame.copy() if effect_type == "vanish" else background.copy()
 
-    progress = min(1.0, age / GOKU_EFFECT_SECONDS)
+    # Keep the camera image intact. Teleport streaks are drawn as separate
+    # graphic marks beside the silhouette; no pixels of the person are warped.
+    top, bottom = int(ys.min()), int(ys.max()) + 1
+    left, right = int(xs.min()), int(xs.max()) + 1
+    body_h, body_w = bottom - top, right - left
+    if effect_type == "vanish":
+        # Keep the person fixed while the strips move, then snap away.
+        visibility = 1.0 - float(np.clip((progress - 0.76) / 0.12, 0.0, 1.0))
+        base_alpha = mask * visibility
+    else:
+        visibility = float(np.clip((progress - 0.12) / 0.12, 0.0, 1.0))
+        base_alpha = mask * visibility
+    output = alpha_composite(frame, background, np.clip(base_alpha, 0.0, 1.0))
 
     if effect_type == "vanish":
-        # Fade out: person dissolves, speed lines flash, then white flash.
-        person_alpha = mask * max(0.0, 1.0 - progress * 1.8)
-        person_alpha = np.clip(person_alpha, 0.0, 1.0)
-        output = alpha_composite(frame, background, person_alpha)
+        # Build the streaks toward the disappearance, then taper after the snap.
+        activity = float(np.clip(progress / 0.72, 0.0, 1.0))
+        activity *= float(np.clip((1.0 - progress) / 0.20, 0.0, 1.0))
+        # Nonlinear travel makes the final streaks accelerate into the vanish.
+        travel = progress + 1.3 * progress ** 3
+    else:
+        activity = float(np.sin(np.pi * progress))
+        travel = 1.0 - progress
+    if activity > 0.01:
+        streak_layer = output.copy()
+        streaks = [
+            (left - int(body_w * 0.045), 0.24),
+            (left + int(body_w * 0.025), 0.32),
+            (right - int(body_w * 0.025), 0.28),
+            (right + int(body_w * 0.045), 0.36),
+        ]
+        # These foreground marks cross the person too, like the blue vertical
+        # energy streaks in the reference frame, without moving the camera image.
+        streaks.extend((left + int(body_w * fraction), 0.25 + 0.055 * (index % 4))
+                       for index, fraction in enumerate((0.16, 0.32, 0.49, 0.66, 0.83)))
+        for index, (streak_x, length_fraction) in enumerate(streaks):
+            x = int(np.clip(streak_x, 0, width - 1))
+            length = max(12, int(body_h * length_fraction))
+            offset = (travel * 2.5 + index * 0.19) % 1.0
+            y_start = top - length + int(offset * (body_h + length))
+            y_end = y_start + length
+            color = (255, 145, 24)  # bright cyan-blue in BGR
+            thickness = 2 if index % 3 else 3
+            cv2.line(streak_layer, (x, y_start), (x, y_end), color, thickness,
+                     cv2.LINE_AA)
+            # Fine highlight makes the blue slash read as energy, not a seam.
+            edge_x = int(np.clip(x + (3 if index % 2 == 0 else -3), 0, width - 1))
+            cv2.line(streak_layer, (edge_x, y_start + 5), (edge_x, y_end - 5),
+                     (255, 220, 100), 1, cv2.LINE_AA)
+        output = cv2.addWeighted(output, 1.0 - activity * 0.58,
+                                 streak_layer, activity * 0.58, 0)
 
-        # Speed lines appear in the middle of the effect.
-        line_strength = float(np.clip(progress * 3.0 - 0.3, 0.0, 1.0) *
-                               np.clip(1.0 - (progress - 0.5) * 4.0, 0.0, 1.0))
-        if line_strength > 0.01 and lines:
-            line_layer = output.copy()
-            for p0, p1 in lines:
-                cv2.line(line_layer, p0, p1, (255, 255, 255), 1, cv2.LINE_AA)
-            output = cv2.addWeighted(output, 1.0 - line_strength * 0.85,
-                                     line_layer, line_strength * 0.85, 0)
-
-        # White flash near the end.
-        flash = float(np.clip((progress - 0.6) * 4.0, 0.0, 1.0))
-        if flash > 0.0:
-            white = np.full_like(output, 255)
-            output = cv2.addWeighted(output, 1.0 - flash, white, flash, 0)
-
-        return output
-
-    else:  # return
-        # Fade in: white flash first, then person materialises.
-        flash = float(np.clip(1.0 - progress * 3.0, 0.0, 1.0))
-        if flash > 0.0:
-            white = np.full_like(background, 255)
-            base = cv2.addWeighted(background, 1.0 - flash, white, flash, 0)
-        else:
-            base = background.copy()
-
-        person_alpha = mask * min(1.0, max(0.0, progress * 2.0 - 0.5))
-        output = alpha_composite(frame, base, person_alpha)
-
-        # Speed lines in the beginning.
-        line_strength = float(np.clip(progress * 3.0, 0.0, 1.0) *
-                               np.clip(1.0 - progress * 2.5, 0.0, 1.0))
-        if line_strength > 0.01 and lines:
-            line_layer = output.copy()
-            for p0, p1 in lines:
-                cv2.line(line_layer, p0, p1, (255, 255, 255), 1, cv2.LINE_AA)
-            output = cv2.addWeighted(output, 1.0 - line_strength * 0.85,
-                                     line_layer, line_strength * 0.85, 0)
-        return output
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -1484,7 +1469,6 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, active_effects: "
     log_anchor: tuple[int, int, int] | None = None
     log_cache: dict[int, np.ndarray] = {}
     vanished_frame: np.ndarray | None = None
-    goku_lines: list | None = None
     virtual_camera = None
     virtual_camera_initialized = False
     calibration_remaining = None
@@ -1515,8 +1499,6 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, active_effects: "
                     resources.callback(virtual_camera.close)
             if "normal" in active_effects and (dissolve_field is None or dissolve_field.shape != (height, width)):
                 dissolve_field, sparkle_noise = make_dissolve_fields(height, width)
-            if "goku" in active_effects and goku_lines is None:
-                goku_lines = make_goku_lines(height, width)
             now = time.perf_counter()
 
             elapsed_ms = int((now - started) * 1000)
@@ -1593,7 +1575,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, active_effects: "
                     last_mask = mask
                     last_mask_at = now
                 display = render_goku(camera_frame, background, mask, age,
-                                      effect_type="vanish", lines=goku_lines)
+                                      effect_type="vanish")
                 if age >= GOKU_EFFECT_SECONDS:
                     state.phase = "goku_linger"
                     state.goku_linger_started = now
@@ -1621,7 +1603,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, active_effects: "
                     last_mask = mask
                     last_mask_at = now
                 display = render_goku(camera_frame, background, mask, age,
-                                      effect_type="return", lines=goku_lines)
+                                      effect_type="return")
                 if age >= GOKU_EFFECT_SECONDS:
                     state.phase = "ready"
                     state.active_vanish = None

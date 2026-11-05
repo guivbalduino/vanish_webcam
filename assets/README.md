@@ -12,4 +12,4 @@ O app cria a fumaça em tempo real com formas procedurais em `naruto_effect.py`.
 
 ## Som do teletransporte
 
-`teleport.MP3` é opcional. Se o arquivo não estiver presente, `vanish_sound.py` gera um WAV curto (`vanish_teleport.wav`) na pasta temporária do sistema. Assim, o modo Goku continua reproduzindo som nas duas transições. Para usar outro som, coloque seu arquivo `teleport.MP3` nesta pasta.
+`goku-teleport-sound.mp3` é o áudio usado nas duas transições do modo Goku. Se o arquivo não estiver presente, `vanish_sound.py` gera um WAV curto (`vanish_teleport.wav`) na pasta temporária do sistema.
